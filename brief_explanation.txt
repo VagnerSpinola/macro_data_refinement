@@ -1,0 +1,32 @@
+Methodology and Anomalies
+========================
+
+I approached the task as a data normalization and rules-validation problem. The first step was to read all files recursively 
+from quarterly_output/sessions without trusting folder placement as a source of truth, because the dataset includes cross-folder 
+anomalies where file type, filename prefix, and directory do not always match the actual department contained in the payload. 
+
+To handle this safely, I implemented dedicated parsers for each official format: 
+
+JSON for .mdr files
+CSV for .csv files 
+pipe-delimited text for .txt files
+
+Each parsed record was converted into a unified internal structure containing session_id, processor, department, timestamp, ref, 
+bin, value, category, and source file.
+
+After normalization, I applied the six standard validation rules from the Processing Manual and the supplementary rules from the 
+Compliance Annex. The standard rules covered valid department codes, authorized processors, valid bins, exact category values, 
+positive numeric values, and timestamps constrained to Q4 2025. The annex introduced additional controls: Nora.K entries after 
+November 15, 2025 had to be excluded, bin SP was restricted to department SA, department-bin authorization had to follow the published 
+matrix, values had to remain strictly below 1000.00, sessions had to occur only on weekdays, and duplicate session_id values had to be 
+deduplicated by keeping only the earliest occurrence by timestamp.
+
+A key design choice was to make parsing defensive. Some records contained malformed values or other inconsistent data, and those cases 
+were classified as invalid instead of causing the program to fail. This made the pipeline reproducible and audit-friendly. Duplicate 
+session handling was also performed at dataset scope rather than per file, because the annex rule applies globally.
+
+The main anomalies encountered were invalid departments (197), SP used outside SA (165), duplicate session IDs (161), 
+invalid processors (152), and timestamps outside Q4 2025 (143). Additional issues included Nora.K records after termination (113), 
+weekend sessions (104), invalid categories (67), value ceiling violations (62), invalid bins (55), malformed numeric values (48), 
+and non-positive values (47). After applying all rules, the dataset contained 4005 valid entries out of 5319 total, producing a final 
+sum of 1.023.118,20
