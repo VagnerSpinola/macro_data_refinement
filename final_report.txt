@@ -1,0 +1,38 @@
+Macro Data Refinement - Final Report
+===================================
+
+Objective
+---------
+Calculate the sum of all valid entry values across all departments.
+
+Results
+-------
+Total entries scanned: 5319
+Valid entries: 4005
+Invalid entries: 1314
+Final sum (valid entries only): 1023118.20
+
+Anomaly Summary (invalid by first failing rule)
+-----------------------------------------------
+- invalid_department: 197
+- sp_outside_sa: 165
+- duplicate_session_id: 161
+- invalid_processor: 152
+- timestamp_out_of_q4_2025: 143
+- nora_k_after_termination: 113
+- weekend_session: 104
+- invalid_category: 67
+- value_ceiling_violation: 62
+- invalid_bin: 55
+- invalid_value_format: 48
+- value_not_positive: 47
+
+Methodology
+-----------
+This solution processes all session files recursively from quarterly_output/sessions and does not rely on folder names for data meaning. Each record is normalized into a unified Entry model with the canonical fields required by the challenge: session_id, processor, department, timestamp, ref, bin, value, and category. Three parsers are implemented to support the official formats: JSON (.mdr), CSV (.csv), and pipe-delimited text (.txt). Parsing is defensive, so malformed timestamps and non-numeric values are not allowed to crash the run; they are classified as invalid and tracked in the anomaly summary.
+
+Validation is applied as a deterministic rules engine and follows the published sequence: the six Processing Manual rules plus all supplementary Compliance Annex rules. The script enforces department, processor, bin, and category whitelists; positive values; Q4-2025 date boundaries; Nora.K termination cutoff; SP bin restriction to SA; department-bin authorization matrix; strict value ceiling (<1000.00); and weekday-only sessions.
+
+Duplicate session handling is implemented at dataset level, as requested by the annex. For each session_id, only the earliest occurrence by timestamp is retained. Any later occurrence with the same session_id is excluded. Tie-breaking is deterministic by source file path to guarantee reproducible results between runs.
+
+The final output metric is computed as the sum of values from all valid entries only. In parallel, the script produces an anomaly distribution by first-failing rule, enabling clear auditability of removals. This keeps the calculation transparent, testable, and ready for technical review.

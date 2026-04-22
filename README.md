@@ -17,3 +17,4 @@ Calculate the **sum of all valid entry values** across all departments.
 
 ## Notes
 Your facility photo serves as verification of your assigned location.
+Code - JANSKY
